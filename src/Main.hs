@@ -2,6 +2,7 @@ module Main where
 
 import Control.Exception
 import Data.List
+import System.Environment
 import System.Exit
 import System.IO
 import System.Process
@@ -20,14 +21,13 @@ import Network.Wai.Handler.Warp
 
 
 main :: IO ()
-main = run 5000 app
-
-app :: Application
-app req = case (requestMethod req, pathInfo req) of
-    ("GET", ref:path@(_:_)) -> commandResponse "git"
-        ["show", T.concat [ref, ":", T.concat $ intersperse "/" path]]
-    (_, _) -> return $ ResponseBuilder status404 [] $
-        BB.fromText "404: No such route"
+main = do
+    port <- fmap (read . head) getArgs
+    run port $ \req -> case (requestMethod req, pathInfo req) of
+        ("GET", ref:path@(_:_)) -> commandResponse "git"
+            ["show", T.concat [ref, ":", T.concat $ intersperse "/" path]]
+        (_, _) -> return $ ResponseBuilder status404 [] $
+            BB.fromText "404: No such route"
 
 commandResponse :: Text -> [Text] -> ResourceT IO Response
 commandResponse exec args = do

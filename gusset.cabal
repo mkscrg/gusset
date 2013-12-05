@@ -1,7 +1,7 @@
 name: gusset
 version: 0.0.0
-synopsis: HTTP access to files in Git
-description: TOOD
+synopsis: Serve Git-backed files over HTTP
+description: This is a dead-simple WAI/Warp app around `git show`.
 homepage: http://github.com/mkscrg/gusset
 license: BSD3
 license-file: LICENSE
