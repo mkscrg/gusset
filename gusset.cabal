@@ -1,0 +1,38 @@
+name: gusset
+version: 0.0.0
+synopsis: HTTP access to files in Git
+description: TOOD
+homepage: http://github.com/mkscrg/gusset
+license: BSD3
+license-file: LICENSE
+author: Mike Craig
+maintainer: mkscrg@gmail.com
+copyright: 2013 Mike Craig
+category: Web
+build-type: Simple
+extra-source-files:
+    README.md
+cabal-version: >= 1.9.2
+
+executable gusset
+  hs-source-dirs: src
+  ghc-options: -Wall -O2 -threaded
+  extensions:
+      OverloadedStrings
+    , TupleSections
+  main-is: Main.hs
+  build-depends:
+      base == 4.6.*
+    , blaze-builder >= 0.3.1.1 && < 0.4
+    , bytestring == 0.10.*
+    , conduit == 1.0.*
+    , http-types == 0.8.*
+    , process >= 1.1 && < 1.3
+    , text == 0.11.*
+    , transformers == 0.3.*
+    , wai >= 1.4.1 && < 1.5
+    , warp >= 1.3.10.1 && < 1.4
+
+source-repository head
+  type: git
+  location: git://github.com/mkscrg/gusset.git
