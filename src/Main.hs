@@ -1,6 +1,5 @@
 module Main where
 
-import Control.Exception
 import Data.List
 import System.Environment
 import System.Exit
@@ -8,11 +7,9 @@ import System.IO
 import System.Process
 
 import qualified Blaze.ByteString.Builder as BB
-import qualified Blaze.ByteString.Builder.Char.Utf8 as BB
-import Control.Monad.IO.Class
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as B
-import Data.Conduit (ResourceT)
+import Data.Conduit
+import qualified Data.Conduit.Binary as CB
+import qualified Data.Conduit.List as CL
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Types
@@ -26,21 +23,12 @@ main = do
     run port $ \req -> case (requestMethod req, pathInfo req) of
         ("GET", ref:path@(_:_)) -> commandResponse "git"
             ["show", T.concat [ref, ":", T.concat $ intersperse "/" path]]
-        (_, _) -> return $ ResponseBuilder status404 [] $
-            BB.fromText "404: No such route"
+        (_, _) -> return $ responseLBS status404 [] "404: No such route"
 
-commandResponse :: Text -> [Text] -> ResourceT IO Response
-commandResponse exec args = do
-    (sts, bs) <- liftIO $ fmap (either (status400, ) (status200, )) $
-        command exec args
-    return $ ResponseBuilder sts [] $ BB.fromByteString bs
-
-command :: Text -> [Text] -> IO (Either ByteString ByteString)
-command exec args = handleIO $ bracket cmd close check
+commandResponse :: Text -> [Text] -> IO Response
+commandResponse exec args = responseSourceBracket command close source
   where
-    handleIO = handle $ \e -> return $ Left $ B.pack $
-        "IOException: " ++ show (e :: IOException)
-    cmd = do
+    command = do
         (_, Just outh, Just errh, ph) <- createProcess
             (proc (T.unpack exec) (map T.unpack args))
                 { std_out = CreatePipe, std_err = CreatePipe }
@@ -49,8 +37,10 @@ command exec args = handleIO $ bracket cmd close check
         _ <- waitForProcess ph
         hClose outh
         hClose errh
-    check (outh, errh, ph) = do
-        ex <- waitForProcess ph
-        case ex of
-            ExitSuccess -> fmap Right $ B.hGetContents outh
-            ExitFailure _ -> fmap Left $ B.hGetContents errh
+    source (outh, errh, ph) = do
+        (st, h) <- flip fmap (waitForProcess ph) $ \ex -> case ex of
+            ExitSuccess -> (status200, outh)
+            ExitFailure _ -> (status400, errh)
+        return
+            ( st, []
+            , CB.sourceHandle h $= CL.map (Chunk . BB.fromByteString) )
